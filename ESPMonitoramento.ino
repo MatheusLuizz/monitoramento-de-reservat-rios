@@ -18,7 +18,7 @@ ESP8266WiFiMulti WiFiMulti;
 // fim da conexão na rede sem fio
 
 // Declarações do MQTT
-const char broker[] = "192.168.1.3";  // IP servidor, obtido a partir do comando "ipconfig /all" no terminal
+const char broker[] = "";  // IP do servidor
 int        port     = 1883; // Porta padrão do MQTT
 const char topic[]  = "";   // Inserir o nome do tópico ao qual o MQTT enviará os dados
 
@@ -98,6 +98,14 @@ void loop() {
   Serial.print("Distancia: ");
   Serial.println(distancia);
 
+  if (distancia <= 30) {
+    volume = 100;
+  } else if (distancia >= 100) {
+    volume = 0;
+  } else {
+    volume = 100 * (1 - (distancia - 30) / 70.0); // Cálculo do volume de uma caixa d'água e 1000 litros
+  }
+
   mqttClient.poll();
   unsigned long currentMillis = millis();
 
@@ -107,26 +115,26 @@ void loop() {
     Serial.print("Enviando mensagem ao topic: ");
     Serial.print(topic);
     Serial.print(": ");
-    Serial.print(volumeReservatorio);       // volume da caixa, deve ser calculado com as informações de distância do sensor ultrassônico
+    Serial.print(volume);       // volume da caixa, deve ser calculado com as informações de distância do sensor ultrassônico
     Serial.println("%");
 
   // Enviando mensagem ao servidor 
   mqttClient.beginMessage(topic);
-  mqttClient.print(String(volumeReservatorio));
+  mqttClient.print(String(volume));
   mqttClient.endMessage();
   }
   
-  if(distancia >= 50){
+  if(volume >= 70){
     digitalWrite(reservatorioBaixo, LOW);
     digitalWrite(reservatorioMedio, LOW);
     digitalWrite(reservatorioAlto, HIGH);
   }
-  if(distancia < 50 && distancia >= 30){
+  if(volume < 70 && volume >= 30){
     digitalWrite(reservatorioBaixo, LOW);
     digitalWrite(reservatorioMedio, HIGH);
     digitalWrite(reservatorioAlto, LOW);
   }
-  if(distancia < 30){
+  if(volume < 30){
     digitalWrite(reservatorioBaixo, HIGH);
     digitalWrite(reservatorioMedio, LOW);
     digitalWrite(reservatorioAlto, LOW);
@@ -138,7 +146,7 @@ void loop() {
 
   lcd.begin(16, 2);
   lcd.setCursor(0, 0);
-  lcd.print("Volume: " + (String) volumeReservatorio + "%");
+  lcd.print("Volume: " + (String) volume + "%");
 
-  delay(2000);
+  delay(5000);
 }
